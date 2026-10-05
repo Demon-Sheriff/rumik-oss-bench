@@ -35,6 +35,10 @@ judges = [
     # logs a provider failure and falls back to CPU anyway.
     "onnxruntime>=1.18",
     "torch>=2.4",
+    # Below 5 on purpose. transformers 5 CohereTokenizer rebuilds the
+    # pre-tokenizer and drops tokenizer.json's Split, so Indic combining
+    # marks split off (1715/2100 indic22 prompts differ from 4.57.6) and
+    # <SEP>/<CLS> are appended past vocab_size. See the README.
     "transformers>=4.57,<5",
     "torchaudio>=2.4",
     "soundfile>=0.12",

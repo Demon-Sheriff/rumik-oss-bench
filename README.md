@@ -99,6 +99,32 @@ temperature 0.8, so exact equality is not expected and would be suspicious.
 > charges the trailing speech as insertions. `scripts/generate.py` builds this
 > for you via `bundle.prompt()`.
 
+### Stay on transformers 4.x
+
+`[judges]` pins `transformers>=4.57,<5`. That pin is load-bearing.
+
+`rumik-oss-1` sets `tokenizer_class` to `CohereTokenizer`. On transformers 5
+that class builds a new pre-tokenizer (`Digits` + `ByteLevel` with its own
+regex) and ignores the Split saved in `tokenizer.json`. The saved Split keeps
+Unicode combining marks (`\p{M}`) on the letter, which is what holds a matra
+or virama on its consonant. Without it the ids change. `decode` still returns
+the original string, so nothing warns you.
+
+On `prompts/indic22_bench.jsonl`, transformers 5.18.0 disagrees with 4.57.6
+(the `transformers_version` in the model config) on 1715 of 2100 prompts.
+Mean length goes from 189.6 tokens to 253.0. `hi_000001` goes from 67 to 159.
+Seventeen of the 21 languages differ on every prompt. `ur` differs on 15.
+`kn`, `mni`, and `sat` match.
+
+5.x also registers `<SEP>` and `<CLS>` as ids 277404 and 277405. The
+embedding has 277404 rows, so a prompt that contains those strings raises
+`IndexError` inside the embedding.
+
+`load_bundle` refuses a `CohereTokenizer` on transformers 5 or newer before
+it downloads weights. Keep the pin. The other way through is
+`"tokenizer_class": "PreTrainedTokenizerFast"` in `tokenizer_config.json`,
+which matches 4.57.6 on all 2100 prompts under both 4.57.6 and 5.18.0.
+
 ## Score any other system
 
 The judge is IndicConformer, gated on Hugging Face, so request access then

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..shapes import AudioVocabLayout
+from ..tokenizer_compat import assert_tokenizer_compat
 from ..vendor.audio_token_parser import build_audio_code_id_map
 
 DEFAULT_DEVICE = "cuda:0"
@@ -72,6 +73,7 @@ def load_bundle(
     for an RL rollout. Pass "cpu" to fall back.
     """
     import torch
+    import transformers
     from transformers import (AutoFeatureExtractor, AutoModelForCausalLM,
                               AutoTokenizer, MimiModel)
 
@@ -88,6 +90,9 @@ def load_bundle(
 
     src = root if is_local else str(path)
     tokenizer = AutoTokenizer.from_pretrained(src)
+    # transformers 5 CohereTokenizer retokenizes Indic text and can emit
+    # <SEP>/<CLS> past the embedding. Stop before the weight download.
+    assert_tokenizer_compat(tokenizer, version=transformers.__version__)
     model = AutoModelForCausalLM.from_pretrained(
         src, trust_remote_code=True, dtype=torch_dtype,
         attn_implementation=attn_implementation,
